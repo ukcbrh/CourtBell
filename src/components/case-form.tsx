@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +23,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useCases } from "@/hooks/use-cases";
-import type { Case } from "@/lib/types";
+import type { Case, Hearing } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
+import { useState } from "react";
+import { Separator } from "./ui/separator";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
@@ -35,6 +37,11 @@ const formSchema = z.object({
   date: z.date({ required_error: "A date is required." }),
   time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:MM)."),
   notes: z.string().optional(),
+  juniorAdvocate: z.string().optional(),
+  history: z.array(z.object({
+    date: z.string(),
+    notes: z.string(),
+  })).optional(),
 });
 
 type CaseFormValues = z.infer<typeof formSchema>;
@@ -47,6 +54,10 @@ export function CaseForm({ initialData }: CaseFormProps) {
   const router = useRouter();
   const { addCase, updateCase } = useCases();
   const { toast } = useToast();
+  const [history, setHistory] = useState<Hearing[]>(initialData?.history || []);
+  const [newHearingDate, setNewHearingDate] = useState<Date | undefined>(new Date());
+  const [newHearingNotes, setNewHearingNotes] = useState('');
+
 
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
@@ -62,6 +73,8 @@ export function CaseForm({ initialData }: CaseFormProps) {
           court: "",
           time: "09:00",
           notes: "",
+          juniorAdvocate: "",
+          history: [],
         },
   });
 
@@ -69,6 +82,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
     const caseData = {
       ...values,
       date: format(values.date, "yyyy-MM-dd"),
+      history: history,
     };
 
     if (initialData) {
@@ -81,6 +95,29 @@ export function CaseForm({ initialData }: CaseFormProps) {
     router.push("/");
     router.refresh(); // To reflect changes on the dashboard
   };
+  
+  const addHearing = () => {
+    if (!newHearingDate || !newHearingNotes.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide both a date and notes for the hearing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newHearing: Hearing = {
+      date: format(newHearingDate, "yyyy-MM-dd"),
+      notes: newHearingNotes.trim(),
+    };
+    setHistory(prev => [...prev, newHearing].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    setNewHearingDate(new Date());
+    setNewHearingNotes('');
+  };
+
+  const deleteHearing = (index: number) => {
+    setHistory(prev => prev.filter((_, i) => i !== index));
+  }
+
 
   return (
     <Card className="max-w-4xl mx-auto">
@@ -148,7 +185,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
                         name="date"
                         render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Date</FormLabel>
+                            <FormLabel>Next Hearing Date</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -190,13 +227,26 @@ export function CaseForm({ initialData }: CaseFormProps) {
                         </FormItem>
                         )}
                     />
+                    <FormField
+                        control={form.control}
+                        name="juniorAdvocate"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Junior Advocate</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., Jane Smith" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                 </div>
                  <FormField
                     control={form.control}
                     name="notes"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Notes</FormLabel>
+                        <FormLabel>Case Notes</FormLabel>
                         <FormControl>
                         <Textarea placeholder="Add any relevant notes for the case..." {...field} />
                         </FormControl>
@@ -204,7 +254,78 @@ export function CaseForm({ initialData }: CaseFormProps) {
                     </FormItem>
                     )}
                 />
-                <div className="flex justify-end gap-2">
+
+                <Separator />
+
+                <div>
+                    <h3 className="text-lg font-medium font-headline mb-4">Case History</h3>
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-4 items-start">
+                             <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                <FormLabel htmlFor="hearing-date">Hearing Date</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            id="hearing-date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full sm:w-[240px] justify-start text-left font-normal",
+                                            !newHearingDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {newHearingDate ? format(newHearingDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                        mode="single"
+                                        selected={newHearingDate}
+                                        onSelect={setNewHearingDate}
+                                        initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                           <div className="w-full">
+                             <FormLabel htmlFor="hearing-notes">Hearing Notes</FormLabel>
+                             <Textarea 
+                                id="hearing-notes"
+                                placeholder="Add notes for this hearing..." 
+                                value={newHearingNotes} 
+                                onChange={(e) => setNewHearingNotes(e.target.value)}
+                                rows={2}
+                             />
+                           </div>
+                        </div>
+                         <Button type="button" size="sm" onClick={addHearing}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Hearing Note
+                        </Button>
+                    </div>
+
+                     {history.length > 0 && (
+                        <div className="mt-6 space-y-4">
+                            <h4 className="font-semibold">Previous Hearings:</h4>
+                            <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
+                                {history.map((h, index) => (
+                                    <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
+                                       <div>
+                                            <p className="font-bold">{format(new Date(h.date), "PPP")}</p>
+                                            <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{h.notes}</p>
+                                       </div>
+                                       <Button type="button" variant="ghost" size="icon" onClick={() => deleteHearing(index)}>
+                                            <Trash2 className="h-4 w-4 text-destructive"/>
+                                       </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+
+                <div className="flex justify-end gap-2 pt-4">
                     <Button type="button" variant="outline" onClick={() => router.push('/')}>Cancel</Button>
                     <Button type="submit">{initialData ? "Save Changes" : "Add Case"}</Button>
                 </div>
