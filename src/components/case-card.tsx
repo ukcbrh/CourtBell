@@ -53,7 +53,13 @@ export function CaseCard({ caseItem }: CaseCardProps) {
   };
   
   const handleShare = async () => {
-    const latestHearing = caseItem.history && caseItem.history.length > 0 ? caseItem.history[0] : null;
+    let historyText = "No past hearings recorded.";
+    if (caseItem.history && caseItem.history.length > 0) {
+        historyText = caseItem.history
+            .map(h => ` - ${format(new Date(h.date), "PPP")}: ${h.notes}`)
+            .join('\n');
+    }
+
     const shareText = `
 Case Details:
 - Title: ${caseItem.title}
@@ -64,8 +70,8 @@ Case Details:
 ${caseItem.juniorAdvocate ? `- Junior Advocate: ${caseItem.juniorAdvocate}` : ''}
 - Case Notes: ${caseItem.notes || 'N/A'}
 ---
-Last Hearing (${latestHearing ? format(new Date(latestHearing.date), "PPP") : 'N/A'}):
-${latestHearing ? latestHearing.notes : 'No past hearings recorded.'}
+Case History:
+${historyText}
     `.trim();
 
     if (navigator.share) {
