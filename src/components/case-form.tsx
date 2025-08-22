@@ -23,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useCases } from "@/hooks/use-cases";
-import type { Case, Hearing } from "@/lib/types";
+import type { Case, Hearing, Expense } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { useState } from "react";
@@ -32,6 +32,8 @@ import { Separator } from "./ui/separator";
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
   clientName: z.string().min(2, "Client name must be at least 2 characters."),
+  clientAddress: z.string().optional(),
+  clientPhone: z.string().optional(),
   caseNumber: z.string().min(1, "Case number is required."),
   court: z.string().min(2, "Court name is required."),
   date: z.date({ required_error: "A date is required." }),
@@ -41,6 +43,10 @@ const formSchema = z.object({
   history: z.array(z.object({
     date: z.string(),
     notes: z.string(),
+  })).optional(),
+  expenses: z.array(z.object({
+      description: z.string(),
+      amount: z.number(),
   })).optional(),
 });
 
@@ -55,8 +61,13 @@ export function CaseForm({ initialData }: CaseFormProps) {
   const { addCase, updateCase } = useCases();
   const { toast } = useToast();
   const [history, setHistory] = useState<Hearing[]>(initialData?.history || []);
+  const [expenses, setExpenses] = useState<Expense[]>(initialData?.expenses || []);
+  
   const [newHearingDate, setNewHearingDate] = useState<Date | undefined>(new Date());
   const [newHearingNotes, setNewHearingNotes] = useState('');
+
+  const [newExpenseDesc, setNewExpenseDesc] = useState('');
+  const [newExpenseAmount, setNewExpenseAmount] = useState('');
 
 
   const form = useForm<CaseFormValues>({
@@ -69,12 +80,15 @@ export function CaseForm({ initialData }: CaseFormProps) {
       : {
           title: "",
           clientName: "",
+          clientAddress: "",
+          clientPhone: "",
           caseNumber: "",
           court: "",
           time: "09:00",
           notes: "",
           juniorAdvocate: "",
           history: [],
+          expenses: [],
         },
   });
 
@@ -83,6 +97,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
       ...values,
       date: format(values.date, "yyyy-MM-dd"),
       history: history,
+      expenses: expenses,
     };
 
     if (initialData) {
@@ -117,6 +132,29 @@ export function CaseForm({ initialData }: CaseFormProps) {
   const deleteHearing = (index: number) => {
     setHistory(prev => prev.filter((_, i) => i !== index));
   }
+  
+  const addExpense = () => {
+    const amount = parseFloat(newExpenseAmount);
+    if (!newExpenseDesc.trim() || isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please provide a valid description and a positive amount for the expense.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newExpense: Expense = {
+        description: newExpenseDesc.trim(),
+        amount: amount,
+    };
+    setExpenses(prev => [...prev, newExpense]);
+    setNewExpenseDesc('');
+    setNewExpenseAmount('');
+  }
+
+  const deleteExpense = (index: number) => {
+    setExpenses(prev => prev.filter((_, i) => i !== index));
+  }
 
 
   return (
@@ -149,6 +187,45 @@ export function CaseForm({ initialData }: CaseFormProps) {
                             <FormLabel>Client Name</FormLabel>
                             <FormControl>
                             <Input placeholder="e.g., John Doe" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="clientAddress"
+                        render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                            <FormLabel>Client Address</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., 123 Main St, Anytown" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="clientPhone"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Client Phone (with country code)</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., 919876543210" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="juniorAdvocate"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Junior Advocate</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., Jane Smith" {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -227,19 +304,6 @@ export function CaseForm({ initialData }: CaseFormProps) {
                         </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="juniorAdvocate"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Junior Advocate</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., Jane Smith" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
                 </div>
                  <FormField
                     control={form.control}
@@ -256,74 +320,127 @@ export function CaseForm({ initialData }: CaseFormProps) {
                 />
 
                 <Separator />
-
-                <div>
-                    <h3 className="text-lg font-medium font-headline mb-4">Case History</h3>
-                    <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row gap-4 items-start">
-                             <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                <FormLabel htmlFor="hearing-date">Hearing Date</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            id="hearing-date"
-                                            variant={"outline"}
-                                            className={cn(
-                                            "w-full sm:w-[240px] justify-start text-left font-normal",
-                                            !newHearingDate && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {newHearingDate ? format(newHearingDate, "PPP") : <span>Pick a date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                        mode="single"
-                                        selected={newHearingDate}
-                                        onSelect={setNewHearingDate}
-                                        initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
+                
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 className="text-lg font-medium font-headline mb-4">Case History</h3>
+                        <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row gap-4 items-start">
+                                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                    <FormLabel htmlFor="hearing-date">Hearing Date</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                id="hearing-date"
+                                                variant={"outline"}
+                                                className={cn(
+                                                "w-full sm:w-[240px] justify-start text-left font-normal",
+                                                !newHearingDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {newHearingDate ? format(newHearingDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                            mode="single"
+                                            selected={newHearingDate}
+                                            onSelect={setNewHearingDate}
+                                            initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            <div className="w-full">
+                                <FormLabel htmlFor="hearing-notes">Hearing Notes</FormLabel>
+                                <Textarea 
+                                    id="hearing-notes"
+                                    placeholder="Add notes for this hearing..." 
+                                    value={newHearingNotes} 
+                                    onChange={(e) => setNewHearingNotes(e.target.value)}
+                                    rows={2}
+                                />
                             </div>
-                           <div className="w-full">
-                             <FormLabel htmlFor="hearing-notes">Hearing Notes</FormLabel>
-                             <Textarea 
-                                id="hearing-notes"
-                                placeholder="Add notes for this hearing..." 
-                                value={newHearingNotes} 
-                                onChange={(e) => setNewHearingNotes(e.target.value)}
-                                rows={2}
-                             />
-                           </div>
+                            </div>
+                            <Button type="button" size="sm" onClick={addHearing}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Hearing Note
+                            </Button>
                         </div>
-                         <Button type="button" size="sm" onClick={addHearing}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Hearing Note
-                        </Button>
+
+                        {history.length > 0 && (
+                            <div className="mt-6 space-y-4">
+                                <h4 className="font-semibold">Previous Hearings:</h4>
+                                <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
+                                    {history.map((h, index) => (
+                                        <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
+                                        <div>
+                                                <p className="font-bold">{format(new Date(h.date), "PPP")}</p>
+                                                <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{h.notes}</p>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteHearing(index)}>
+                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                        </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                     {history.length > 0 && (
-                        <div className="mt-6 space-y-4">
-                            <h4 className="font-semibold">Previous Hearings:</h4>
-                            <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
-                                {history.map((h, index) => (
-                                    <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
-                                       <div>
-                                            <p className="font-bold">{format(new Date(h.date), "PPP")}</p>
-                                            <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{h.notes}</p>
-                                       </div>
-                                       <Button type="button" variant="ghost" size="icon" onClick={() => deleteHearing(index)}>
-                                            <Trash2 className="h-4 w-4 text-destructive"/>
-                                       </Button>
-                                    </div>
-                                ))}
+                    <div>
+                        <h3 className="text-lg font-medium font-headline mb-4">Case Expenses</h3>
+                         <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row gap-4 items-start">
+                               <div className="w-full">
+                                 <FormLabel htmlFor="expense-desc">Expense Description</FormLabel>
+                                 <Input 
+                                    id="expense-desc"
+                                    placeholder="e.g., Court Fees" 
+                                    value={newExpenseDesc} 
+                                    onChange={(e) => setNewExpenseDesc(e.target.value)}
+                                 />
+                               </div>
+                                <div className="w-full sm:w-48">
+                                    <FormLabel htmlFor="expense-amount">Amount (₹)</FormLabel>
+                                    <Input
+                                        id="expense-amount"
+                                        type="number"
+                                        placeholder="e.g., 500"
+                                        value={newExpenseAmount}
+                                        onChange={(e) => setNewExpenseAmount(e.target.value)}
+                                    />
+                                </div>
                             </div>
+                            <Button type="button" size="sm" onClick={addExpense}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Expense
+                            </Button>
                         </div>
-                    )}
+                        
+                        {expenses.length > 0 && (
+                            <div className="mt-6 space-y-4">
+                                <h4 className="font-semibold">Recorded Expenses:</h4>
+                                <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
+                                    {expenses.map((e, index) => (
+                                        <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
+                                        <div>
+                                                <p className="font-bold">{e.description}</p>
+                                                <p className="text-muted-foreground mt-1">₹{e.amount}</p>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteExpense(index)}>
+                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                        </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
+                <Separator />
 
                 <div className="flex justify-end gap-2 pt-4">
                     <Button type="button" variant="outline" onClick={() => router.push('/')}>Cancel</Button>

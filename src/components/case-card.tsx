@@ -2,7 +2,7 @@
 
 import type { Case } from "@/lib/types";
 import { format } from "date-fns";
-import { Calendar, Clock, Edit, MoreVertical, Trash2, User, Landmark, CaseSensitive, Share2, Briefcase } from "lucide-react";
+import { Calendar, Clock, Edit, MoreVertical, Trash2, User, Landmark, CaseSensitive, Share2, Briefcase, Home, Phone, Receipt } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -52,7 +52,7 @@ export function CaseCard({ caseItem }: CaseCardProps) {
     deleteCase(caseItem.id);
   };
   
-  const handleShare = async () => {
+  const generateShareText = () => {
     let historyText = "No past hearings recorded.";
     if (caseItem.history && caseItem.history.length > 0) {
         historyText = caseItem.history
@@ -60,20 +60,38 @@ export function CaseCard({ caseItem }: CaseCardProps) {
             .join('\n');
     }
 
-    const shareText = `
-Case Details:
-- Title: ${caseItem.title}
-- Client: ${caseItem.clientName}
-- Case Number: ${caseItem.caseNumber}
-- Court: ${caseItem.court}
-- Next Hearing: ${format(new Date(caseItem.date), "PPP")} at ${format(new Date(`1970-01-01T${caseItem.time}`), "p")}
-${caseItem.juniorAdvocate ? `- Junior Advocate: ${caseItem.juniorAdvocate}` : ''}
-- Case Notes: ${caseItem.notes || 'N/A'}
----
-Case History:
-${historyText}
-    `.trim();
+    let expensesText = "No expenses recorded.";
+    let totalExpenses = 0;
+    if (caseItem.expenses && caseItem.expenses.length > 0) {
+        expensesText = caseItem.expenses
+            .map(e => ` - ${e.description}: ₹${e.amount}`)
+            .join('\n');
+        totalExpenses = caseItem.expenses.reduce((sum, e) => sum + e.amount, 0);
+    }
+    
+    return `
+*Case Details:*
+- *Title:* ${caseItem.title}
+- *Client:* ${caseItem.clientName}
+- *Case Number:* ${caseItem.caseNumber}
+- *Court:* ${caseItem.court}
+- *Next Hearing:* ${format(new Date(caseItem.date), "PPP")} at ${format(new Date(`1970-01-01T${caseItem.time}`), "p")}
+${caseItem.juniorAdvocate ? `- *Junior Advocate:* ${caseItem.juniorAdvocate}` : ''}
+- *Case Notes:* ${caseItem.notes || 'N/A'}
 
+---
+*Case History:*
+${historyText}
+
+---
+*Expenses:*
+${expensesText}
+*Total Expenses: ₹${totalExpenses}*
+    `.trim();
+  }
+
+  const handleShare = async () => {
+    const shareText = generateShareText();
     if (navigator.share) {
       try {
         await navigator.share({
@@ -86,7 +104,7 @@ ${historyText}
     } else {
       try {
         await navigator.clipboard.writeText(shareText);
-        toast({ title: "Copied to Clipboard", description: "Case details copied successfully." });
+        toast({ title: "Copied to Clipboard", description: "Case details and expenses copied successfully." });
       } catch (err) {
         console.error('Failed to copy text: ', err);
         toast({ title: "Error", description: "Could not copy case details.", variant: "destructive" });
@@ -94,9 +112,19 @@ ${historyText}
     }
   };
 
+  const handleShareToWhatsapp = () => {
+    if (!caseItem.clientPhone) {
+        toast({ title: "No Phone Number", description: "Client's phone number is not available.", variant: "destructive" });
+        return;
+    }
+    const shareText = generateShareText();
+    const whatsappUrl = `https://wa.me/${caseItem.clientPhone}?text=${encodeURIComponent(shareText)}`;
+    window.open(whatsappUrl, '_blank');
+  }
+
   const isPast = new Date(caseItem.date + 'T' + caseItem.time) < new Date();
   const latestHearing = caseItem.history?.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-
+  const totalExpenses = caseItem.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
 
   return (
     <Card className={`transition-all flex flex-col ${isPast ? "opacity-60 hover:opacity-100" : "border-primary/20 shadow-lg shadow-primary/5"}`}>
@@ -122,7 +150,11 @@ ${historyText}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={handleShare}>
                         <Share2 className="mr-2 h-4 w-4" />
-                        <span>Share</span>
+                        <span>Share Details</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleShareToWhatsapp} disabled={!caseItem.clientPhone}>
+                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M16.75 13.96c.25.41.4.86.4 1.36 0 2.13-1.73 3.86-3.86 3.86h-1.3c-1.32 0-2.52-.67-3.23-1.71L8.5 17l-1.63 2.45c-.4.6-1.09.95-1.82.95H3.6c-.66 0-1.2-.54-1.2-1.2 0-.39.19-.74.49-1.01l3.52-3.15c.34-.3.55-.74.55-1.21v-2.7c0-2.07 1.68-3.75 3.75-3.75h1.3c2.07 0 3.75 1.68 3.75 3.75 0 .84-.28 1.61-.75 2.21zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                        <span>Send to Client</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <AlertDialogTrigger asChild>
@@ -157,8 +189,20 @@ ${historyText}
           <CaseSensitive className="h-4 w-4 text-primary" />
           <span>{caseItem.caseNumber}</span>
         </div>
+         {caseItem.clientAddress && (
+            <div className="flex items-start gap-2 text-muted-foreground col-span-1 sm:col-span-2">
+                <Home className="h-4 w-4 text-primary mt-1 shrink-0" />
+                <span>{caseItem.clientAddress}</span>
+            </div>
+        )}
+        {caseItem.clientPhone && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <Phone className="h-4 w-4 text-primary" />
+                <span>{caseItem.clientPhone}</span>
+            </div>
+        )}
         {caseItem.juniorAdvocate && (
-            <div className="flex items-center gap-2 text-muted-foreground col-span-1 sm:col-span-2">
+            <div className="flex items-center gap-2 text-muted-foreground col-span-1">
                 <Briefcase className="h-4 w-4 text-primary" />
                 <span>{caseItem.juniorAdvocate}</span>
             </div>
@@ -172,6 +216,12 @@ ${historyText}
                 <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md border border-dashed truncate">
                    {latestHearing.notes}
                 </p>
+            </div>
+        )}
+        {totalExpenses > 0 && (
+            <div className="flex items-center gap-2 text-muted-foreground font-semibold col-span-1 sm:col-span-2">
+                <Receipt className="h-4 w-4 text-primary" />
+                <span>Total Expenses: ₹{totalExpenses.toLocaleString()}</span>
             </div>
         )}
       </CardContent>
