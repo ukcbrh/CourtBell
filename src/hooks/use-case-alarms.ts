@@ -3,9 +3,11 @@
 import { useEffect, useRef } from 'react';
 import type { Case } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useClients } from './use-cases';
 
 export function useCaseAlarms(cases: Case[]) {
   const { toast } = useToast();
+  const { getClientById } = useClients();
   const timeoutIds = useRef<NodeJS.Timeout[]>([]);
 
   useEffect(() => {
@@ -23,6 +25,9 @@ export function useCaseAlarms(cases: Case[]) {
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
       cases.forEach(caseItem => {
+        const client = getClientById(caseItem.clientId);
+        if (!client) return;
+        
         try {
           const alarmTime = new Date(`${caseItem.date}T${caseItem.time}`).getTime();
           const now = Date.now();
@@ -33,14 +38,14 @@ export function useCaseAlarms(cases: Case[]) {
               // In-app toast
               toast({
                 title: `Reminder: ${caseItem.title}`,
-                description: `Case for ${caseItem.clientName} is scheduled now.`,
+                description: `Case for ${client.name} is scheduled now.`,
                 duration: 20000,
               });
   
               // Browser notification
               if (Notification.permission === 'granted') {
                 new Notification(`CourtBell: ${caseItem.title}`, {
-                  body: `Your case for ${caseItem.clientName} at ${caseItem.court} is scheduled now.`,
+                  body: `Your case for ${client.name} at ${caseItem.court} is scheduled now.`,
                   tag: caseItem.id,
                 });
               }
@@ -57,5 +62,5 @@ export function useCaseAlarms(cases: Case[]) {
       // Cleanup on unmount
       timeoutIds.current.forEach(clearTimeout);
     };
-  }, [cases, toast]);
+  }, [cases, toast, getClientById]);
 }

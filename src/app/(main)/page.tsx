@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { useCases } from '@/hooks/use-cases';
 import { CaseCard } from '@/components/case-card';
 import { PlusCircle, FileText } from 'lucide-react';
-import Image from 'next/image';
 
 export default function DashboardPage() {
   const { cases } = useCases();

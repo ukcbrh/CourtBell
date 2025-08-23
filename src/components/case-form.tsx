@@ -11,35 +11,39 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { useCases } from "@/hooks/use-cases";
+import { useCases, useClients, useJuniors } from "@/hooks/use-cases";
 import type { Case, Hearing, Expense } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useState } from "react";
 import { Separator } from "./ui/separator";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
-  clientName: z.string().min(2, "Client name must be at least 2 characters."),
-  clientAddress: z.string().optional(),
-  clientPhone: z.string().optional(),
+  clientId: z.string().min(1, "Please select a client."),
   caseNumber: z.string().min(1, "Case number is required."),
   court: z.string().min(2, "Court name is required."),
   date: z.date({ required_error: "A date is required." }),
   time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:MM)."),
   notes: z.string().optional(),
-  juniorAdvocate: z.string().optional(),
+  juniorId: z.string().optional(),
   history: z.array(z.object({
     date: z.string(),
     notes: z.string(),
@@ -59,6 +63,8 @@ interface CaseFormProps {
 export function CaseForm({ initialData }: CaseFormProps) {
   const router = useRouter();
   const { addCase, updateCase } = useCases();
+  const { clients, isLoaded: clientsLoaded } = useClients();
+  const { juniors, isLoaded: juniorsLoaded } = useJuniors();
   const { toast } = useToast();
   const [history, setHistory] = useState<Hearing[]>(initialData?.history || []);
   const [expenses, setExpenses] = useState<Expense[]>(initialData?.expenses || []);
@@ -79,14 +85,12 @@ export function CaseForm({ initialData }: CaseFormProps) {
         }
       : {
           title: "",
-          clientName: "",
-          clientAddress: "",
-          clientPhone: "",
+          clientId: "",
           caseNumber: "",
           court: "",
           time: "09:00",
           notes: "",
-          juniorAdvocate: "",
+          juniorId: "",
           history: [],
           expenses: [],
         },
@@ -108,7 +112,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
       toast({ title: "Case Added", description: `The case "${values.title}" has been successfully added.` });
     }
     router.push("/");
-    router.refresh(); // To reflect changes on the dashboard
+    router.refresh();
   };
   
   const addHearing = () => {
@@ -156,6 +160,9 @@ export function CaseForm({ initialData }: CaseFormProps) {
     setExpenses(prev => prev.filter((_, i) => i !== index));
   }
 
+  if (!clientsLoaded || !juniorsLoaded) {
+    return <div>Loading...</div>
+  }
 
   return (
     <Card className="max-w-4xl mx-auto">
@@ -180,56 +187,49 @@ export function CaseForm({ initialData }: CaseFormProps) {
                         )}
                     />
                     <FormField
-                        control={form.control}
-                        name="clientName"
-                        render={({ field }) => (
+                      control={form.control}
+                      name="clientId"
+                      render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Client Name</FormLabel>
+                          <FormLabel>Client</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                            <Input placeholder="e.g., John Doe" {...field} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a client" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
+                            <SelectContent>
+                              {clients.map(client => (
+                                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
-                        )}
+                      )}
                     />
                      <FormField
-                        control={form.control}
-                        name="clientAddress"
-                        render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                            <FormLabel>Client Address</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., 123 Main St, Anytown" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="clientPhone"
-                        render={({ field }) => (
+                      control={form.control}
+                      name="juniorId"
+                      render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Client Phone (with country code)</FormLabel>
+                          <FormLabel>Junior Advocate (Optional)</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                            <Input placeholder="e.g., 919876543210" {...field} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a junior advocate" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
+                            <SelectContent>
+                              <SelectItem value="">None</SelectItem>
+                              {juniors.map(junior => (
+                                <SelectItem key={junior.id} value={junior.id}>{junior.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="juniorAdvocate"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Junior Advocate</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., Jane Smith" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
+                      )}
                     />
                     <FormField
                         control={form.control}
@@ -257,6 +257,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
                         </FormItem>
                         )}
                     />
+                    
                     <FormField
                         control={form.control}
                         name="date"

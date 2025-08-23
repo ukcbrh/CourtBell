@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gavel, LayoutDashboard, CalendarPlus, Scale } from "lucide-react";
+import { Gavel, LayoutDashboard, CalendarPlus, Scale, Users, Briefcase, Settings } from "lucide-react";
 
 import {
   Sidebar,
@@ -28,7 +28,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const menuItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/schedule/new", label: "New Case", icon: CalendarPlus },
+    { href: "/clients", label: "Clients", icon: Users },
+    { href: "/juniors", label: "Junior Advocates", icon: Briefcase },
     { href: "/legal-tools", label: "Legal Tools", icon: Gavel },
+    { href: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (

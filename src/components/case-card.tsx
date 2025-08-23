@@ -1,6 +1,6 @@
 "use client";
 
-import type { Case } from "@/lib/types";
+import type { Case, Client, Junior } from "@/lib/types";
 import { format } from "date-fns";
 import { Calendar, Clock, Edit, MoreVertical, Trash2, User, Landmark, CaseSensitive, Share2, Briefcase, Home, Phone, Receipt } from "lucide-react";
 import {
@@ -31,9 +31,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
-import { useCases } from "@/hooks/use-cases";
+import { useCases, useClients, useJuniors } from "@/hooks/use-cases";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useMemo } from "react";
 
 interface CaseCardProps {
   caseItem: Case;
@@ -42,7 +43,13 @@ interface CaseCardProps {
 export function CaseCard({ caseItem }: CaseCardProps) {
   const router = useRouter();
   const { deleteCase } = useCases();
+  const { getClientById } = useClients();
+  const { getJuniorById } = useJuniors();
   const { toast } = useToast();
+
+  const client = useMemo(() => getClientById(caseItem.clientId), [getClientById, caseItem.clientId]);
+  const junior = useMemo(() => getJuniorById(caseItem.juniorId || null), [getJuniorById, caseItem.juniorId]);
+
 
   const handleEdit = () => {
     router.push(`/schedule/${caseItem.id}/edit`);
@@ -50,9 +57,11 @@ export function CaseCard({ caseItem }: CaseCardProps) {
 
   const handleDelete = () => {
     deleteCase(caseItem.id);
+    toast({ title: "Case Deleted", description: `The case "${caseItem.title}" has been deleted.` });
   };
   
   const generateShareText = () => {
+    if (!client) return "Client not found";
     let historyText = "No past hearings recorded.";
     if (caseItem.history && caseItem.history.length > 0) {
         historyText = caseItem.history
@@ -72,11 +81,11 @@ export function CaseCard({ caseItem }: CaseCardProps) {
     return `
 *Case Details:*
 - *Title:* ${caseItem.title}
-- *Client:* ${caseItem.clientName}
+- *Client:* ${client.name}
 - *Case Number:* ${caseItem.caseNumber}
 - *Court:* ${caseItem.court}
 - *Next Hearing:* ${format(new Date(caseItem.date), "PPP")} at ${format(new Date(`1970-01-01T${caseItem.time}`), "p")}
-${caseItem.juniorAdvocate ? `- *Junior Advocate:* ${caseItem.juniorAdvocate}` : ''}
+${junior ? `- *Junior Advocate:* ${junior.name}` : ''}
 - *Case Notes:* ${caseItem.notes || 'N/A'}
 
 ---
@@ -113,13 +122,24 @@ ${expensesText}
   };
 
   const handleShareToWhatsapp = () => {
-    if (!caseItem.clientPhone) {
+    if (!client?.phone) {
         toast({ title: "No Phone Number", description: "Client's phone number is not available.", variant: "destructive" });
         return;
     }
     const shareText = generateShareText();
-    const whatsappUrl = `https://wa.me/${caseItem.clientPhone}?text=${encodeURIComponent(shareText)}`;
+    const whatsappUrl = `https://wa.me/${client.phone}?text=${encodeURIComponent(shareText)}`;
     window.open(whatsappUrl, '_blank');
+  }
+
+  if (!client) {
+    return (
+      <Card className="opacity-50">
+        <CardHeader>
+          <CardTitle>Invalid Case Data</CardTitle>
+          <CardDescription>Client not found for this case.</CardDescription>
+        </CardHeader>
+      </Card>
+    )
   }
 
   const isPast = new Date(caseItem.date + 'T' + caseItem.time) < new Date();
@@ -133,7 +153,7 @@ ${expensesText}
             <div>
                 <CardTitle className="font-headline text-lg">{caseItem.title}</CardTitle>
                 <CardDescription className="flex items-center gap-2 pt-1">
-                    <User className="h-4 w-4" /> {caseItem.clientName}
+                    <User className="h-4 w-4" /> {client.name}
                 </CardDescription>
             </div>
             <AlertDialog>
@@ -152,7 +172,7 @@ ${expensesText}
                         <Share2 className="mr-2 h-4 w-4" />
                         <span>Share Details</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleShareToWhatsapp} disabled={!caseItem.clientPhone}>
+                    <DropdownMenuItem onSelect={handleShareToWhatsapp} disabled={!client.phone}>
                         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M16.75 13.96c.25.41.4.86.4 1.36 0 2.13-1.73 3.86-3.86 3.86h-1.3c-1.32 0-2.52-.67-3.23-1.71L8.5 17l-1.63 2.45c-.4.6-1.09.95-1.82.95H3.6c-.66 0-1.2-.54-1.2-1.2 0-.39.19-.74.49-1.01l3.52-3.15c.34-.3.55-.74.55-1.21v-2.7c0-2.07 1.68-3.75 3.75-3.75h1.3c2.07 0 3.75 1.68 3.75 3.75 0 .84-.28 1.61-.75 2.21zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
                         <span>Send to Client</span>
                     </DropdownMenuItem>
@@ -189,22 +209,22 @@ ${expensesText}
           <CaseSensitive className="h-4 w-4 text-primary" />
           <span>{caseItem.caseNumber}</span>
         </div>
-         {caseItem.clientAddress && (
+         {client.address && (
             <div className="flex items-start gap-2 text-muted-foreground col-span-1 sm:col-span-2">
                 <Home className="h-4 w-4 text-primary mt-1 shrink-0" />
-                <span>{caseItem.clientAddress}</span>
+                <span>{client.address}</span>
             </div>
         )}
-        {caseItem.clientPhone && (
+        {client.phone && (
             <div className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="h-4 w-4 text-primary" />
-                <span>{caseItem.clientPhone}</span>
+                <span>{client.phone}</span>
             </div>
         )}
-        {caseItem.juniorAdvocate && (
+        {junior && (
             <div className="flex items-center gap-2 text-muted-foreground col-span-1">
                 <Briefcase className="h-4 w-4 text-primary" />
-                <span>{caseItem.juniorAdvocate}</span>
+                <span>{junior.name}</span>
             </div>
         )}
         {caseItem.notes && (
