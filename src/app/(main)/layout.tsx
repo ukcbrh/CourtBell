@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gavel, LayoutDashboard, CalendarPlus, Scale, Users, Briefcase, Settings } from "lucide-react";
+import { Gavel, LayoutDashboard, CalendarPlus, Scale, Users, Briefcase, Settings, Home } from "lucide-react";
 
 import {
   Sidebar,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useCases } from "@/hooks/use-cases";
 import { useCaseAlarms } from "@/hooks/use-case-alarms";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -73,6 +74,20 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     {menuItems.find(item => item.href === '/' ? pathname === item.href : pathname.startsWith(item.href))?.label || 'CourtBell'}
                 </h2>
             </div>
+             <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Link href="/" passHref>
+                            <Button variant="ghost" size="icon">
+                                <Home className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Go to Dashboard</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </header>
         <main className="p-4 md:p-6">
           {!isLoaded ? <Skeleton className="h-[400px] w-full" /> : children}

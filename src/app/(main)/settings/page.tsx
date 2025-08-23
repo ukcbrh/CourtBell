@@ -12,13 +12,20 @@ import { useToast } from '@/hooks/use-toast';
 import { UserProfile } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const PROFILE_STORAGE_KEY = 'courtbell-user-profile';
 
 const profileSchema = z.object({
   name: z.string().optional(),
-  upiId: z.string().optional(),
   photoDataUrl: z.string().optional(),
+  mobileNumber: z.string().optional(),
+  address: z.string().optional(),
+  bankName: z.string().optional(),
+  bankAccount: z.string().optional(),
+  accountType: z.string().optional(),
+  ifscCode: z.string().optional(),
+  upiId: z.string().optional(),
 });
 
 export default function SettingsPage() {
@@ -59,12 +66,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
           <CardDescription>
-            Manage your personal and payment information.
+            Manage your personal, contact, and payment information.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -88,22 +95,111 @@ export default function SettingsPage() {
                   </FormItem>
                 )}
               />
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Your Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., A. K. Singh" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
+                <FormField
+                  control={form.control}
+                  name="mobileNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mobile Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 9876543210" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+               <FormField
                 control={form.control}
-                name="name"
+                name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Your Name</FormLabel>
+                    <FormLabel>Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., A. K. Singh" {...field} />
+                      <Input placeholder="Your chamber or office address" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
+              <Separator />
+
+              <h3 className="text-lg font-medium font-headline">Payment Details</h3>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bank Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., State Bank of India" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bankAccount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bank Account Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your account number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="accountType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Type</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Savings" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="ifscCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>IFSC Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., SBIN0001234" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
+
+               <FormField
                 control={form.control}
                 name="upiId"
                 render={({ field }) => (

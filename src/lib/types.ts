@@ -40,6 +40,12 @@ export interface Case {
 
 export interface UserProfile {
   name?: string;
-  upiId?: string;
   photoDataUrl?: string;
+  mobileNumber?: string;
+  address?: string;
+  bankName?: string;
+  bankAccount?: string;
+  accountType?: string;
+  ifscCode?: string;
+  upiId?: string;
 }
