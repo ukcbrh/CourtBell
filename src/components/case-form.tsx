@@ -214,14 +214,14 @@ export function CaseForm({ initialData }: CaseFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Junior Advocate (Optional)</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a junior advocate" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">None</SelectItem>
+                              <SelectItem value="none">None</SelectItem>
                               {juniors.map(junior => (
                                 <SelectItem key={junior.id} value={junior.id}>{junior.name}</SelectItem>
                               ))}
