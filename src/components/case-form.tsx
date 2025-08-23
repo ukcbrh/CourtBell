@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { useCases, useClients, useJuniors } from "@/hooks/use-cases";
 import type { Case, Hearing, Expense } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { useState } from "react";
 import { Separator } from "./ui/separator";
 
@@ -166,14 +166,15 @@ export function CaseForm({ initialData }: CaseFormProps) {
   }
 
   return (
-    <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-            <CardTitle className="font-headline">{initialData ? "Edit Case" : "Add a New Case"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-4xl mx-auto space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">{initialData ? "Edit Case" : "Add a New Case"}</CardTitle>
+                 <CardDescription>Fill in the details below to schedule a new case.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                         control={form.control}
                         name="title"
@@ -215,7 +216,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Junior Advocate (Optional)</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} defaultValue={field.value}>
+                          <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} defaultValue={field.value || 'none'}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a junior advocate" />
@@ -320,138 +321,141 @@ export function CaseForm({ initialData }: CaseFormProps) {
                     </FormItem>
                     )}
                 />
+            </CardContent>
+        </Card>
 
-                <Separator />
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                    <div>
-                        <h3 className="text-lg font-medium font-headline mb-4">Case History</h3>
-                        <div className="space-y-4">
-                            <div className="flex flex-col sm:flex-row gap-4 items-start">
-                                <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                    <FormLabel htmlFor="hearing-date">Hearing Date</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                id="hearing-date"
-                                                variant={"outline"}
-                                                className={cn(
-                                                "w-full sm:w-[240px] justify-start text-left font-normal",
-                                                !newHearingDate && "text-muted-foreground"
-                                                )}
-                                            >
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {newHearingDate ? format(newHearingDate, "PPP") : <span>Pick a date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                            mode="single"
-                                            selected={newHearingDate}
-                                            onSelect={setNewHearingDate}
-                                            initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                            <div className="w-full">
-                                <FormLabel htmlFor="hearing-notes">Hearing Notes</FormLabel>
-                                <Textarea 
-                                    id="hearing-notes"
-                                    placeholder="Add notes for this hearing..." 
-                                    value={newHearingNotes} 
-                                    onChange={(e) => setNewHearingNotes(e.target.value)}
-                                    rows={2}
-                                />
-                            </div>
-                            </div>
-                            <Button type="button" size="sm" onClick={addHearing}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Hearing Note
-                            </Button>
-                        </div>
-
-                        {history.length > 0 && (
-                            <div className="mt-6 space-y-4">
-                                <h4 className="font-semibold">Previous Hearings:</h4>
-                                <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
-                                    {history.map((h, index) => (
-                                        <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
-                                        <div>
-                                                <p className="font-bold">{format(new Date(h.date), "PPP")}</p>
-                                                <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{h.notes}</p>
-                                        </div>
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteHearing(index)}>
-                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                        </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-medium font-headline mb-4">Case Expenses</h3>
-                         <div className="space-y-4">
-                            <div className="flex flex-col sm:flex-row gap-4 items-start">
-                               <div className="w-full">
-                                 <FormLabel htmlFor="expense-desc">Expense Description</FormLabel>
-                                 <Input 
-                                    id="expense-desc"
-                                    placeholder="e.g., Court Fees" 
-                                    value={newExpenseDesc} 
-                                    onChange={(e) => setNewExpenseDesc(e.target.value)}
-                                 />
-                               </div>
-                                <div className="w-full sm:w-48">
-                                    <FormLabel htmlFor="expense-amount">Amount (₹)</FormLabel>
-                                    <Input
-                                        id="expense-amount"
-                                        type="number"
-                                        placeholder="e.g., 500"
-                                        value={newExpenseAmount}
-                                        onChange={(e) => setNewExpenseAmount(e.target.value)}
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Case History</CardTitle>
+                <CardDescription>Add and manage past hearing details for this case.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                        <div className="flex flex-col gap-2 w-full sm:w-auto">
+                            <FormLabel htmlFor="hearing-date">Hearing Date</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        id="hearing-date"
+                                        variant={"outline"}
+                                        className={cn(
+                                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                                        !newHearingDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {newHearingDate ? format(newHearingDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                    mode="single"
+                                    selected={newHearingDate}
+                                    onSelect={setNewHearingDate}
+                                    initialFocus
                                     />
-                                </div>
-                            </div>
-                            <Button type="button" size="sm" onClick={addExpense}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Expense
-                            </Button>
+                                </PopoverContent>
+                            </Popover>
                         </div>
-                        
-                        {expenses.length > 0 && (
-                            <div className="mt-6 space-y-4">
-                                <h4 className="font-semibold">Recorded Expenses:</h4>
-                                <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
-                                    {expenses.map((e, index) => (
-                                        <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
-                                        <div>
-                                                <p className="font-bold">{e.description}</p>
-                                                <p className="text-muted-foreground mt-1">₹{e.amount}</p>
-                                        </div>
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteExpense(index)}>
-                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                        </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <div className="w-full">
+                            <FormLabel htmlFor="hearing-notes">Hearing Notes</FormLabel>
+                            <Textarea 
+                                id="hearing-notes"
+                                placeholder="Add notes for this hearing..." 
+                                value={newHearingNotes} 
+                                onChange={(e) => setNewHearingNotes(e.target.value)}
+                                rows={2}
+                            />
+                        </div>
                     </div>
+                    <Button type="button" size="sm" onClick={addHearing}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Hearing Note
+                    </Button>
                 </div>
 
-                <Separator />
-
-                <div className="flex justify-end gap-2 pt-4">
-                    <Button type="button" variant="outline" onClick={() => router.push('/')}>Cancel</Button>
-                    <Button type="submit">{initialData ? "Save Changes" : "Add Case"}</Button>
+                {history.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="font-semibold">Previous Hearings:</h4>
+                        <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
+                            {history.map((h, index) => (
+                                <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
+                                <div>
+                                        <p className="font-bold">{format(new Date(h.date), "PPP")}</p>
+                                        <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{h.notes}</p>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => deleteHearing(index)}>
+                                        <Trash2 className="h-4 w-4 text-destructive"/>
+                                </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                 <CardTitle className="font-headline">Case Expenses</CardTitle>
+                <CardDescription>Add and manage expenses related to this case.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                        <div className="w-full">
+                            <FormLabel htmlFor="expense-desc">Expense Description</FormLabel>
+                            <Input 
+                            id="expense-desc"
+                            placeholder="e.g., Court Fees" 
+                            value={newExpenseDesc} 
+                            onChange={(e) => setNewExpenseDesc(e.target.value)}
+                            />
+                        </div>
+                        <div className="w-full sm:w-48">
+                            <FormLabel htmlFor="expense-amount">Amount (₹)</FormLabel>
+                            <Input
+                                id="expense-amount"
+                                type="number"
+                                placeholder="e.g., 500"
+                                value={newExpenseAmount}
+                                onChange={(e) => setNewExpenseAmount(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <Button type="button" size="sm" onClick={addExpense}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Expense
+                    </Button>
                 </div>
-            </form>
-            </Form>
-        </CardContent>
-    </Card>
-
+                
+                {expenses.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="font-semibold">Recorded Expenses:</h4>
+                        <div className="space-y-4 max-h-60 overflow-y-auto pr-4">
+                            {expenses.map((e, index) => (
+                                <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
+                                <div>
+                                        <p className="font-bold">{e.description}</p>
+                                        <p className="text-muted-foreground mt-1">₹{e.amount}</p>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => deleteExpense(index)}>
+                                        <Trash2 className="h-4 w-4 text-destructive"/>
+                                </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+        
+        <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => router.push('/')}>Cancel</Button>
+            <Button type="submit">{initialData ? "Save Changes" : "Add Case"}</Button>
+        </div>
+      </form>
+    </Form>
   );
 }
