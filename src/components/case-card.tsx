@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Case, Client, Junior } from "@/lib/types";
