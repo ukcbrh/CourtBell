@@ -1,0 +1,51 @@
+import csv
+import random
+from datetime import datetime, timedelta
+
+def generate_sales_data(num_rows=10000):
+    """Generates realistic-looking sales data."""
+    data = []
+    product_names = [
+        "Laptop", "Keyboard", "Mouse", "Monitor", "Webcam", "Headphones",
+        "Speakers", "Printer", "Scanner", "Router", "Smartphone", "Tablet",
+        "Smartwatch", "Fitness Tracker", "E-Reader", "Gaming Console",
+        "VR Headset", "External Hard Drive", "USB Drive", "SD Card",
+        "Desk", "Chair", "Lamp", "Bookshelf", "Notebook", "Pen", "Pencil",
+        "Eraser", "Highlighter", "Stapler", "Puncher", "Folders", "Paper",
+        "Envelopes", "Calendar", "Planner", "Backpack", "Messenger Bag",
+        "Water Bottle", "Coffee Mug", "Snacks", "Drinks", "Cleaning Supplies",
+        "Soap", "Shampoo", "Conditioner", "Toothbrush", "Toothpaste",
+        "Sunscreen", "Lotion", "Perfume", "Cologne", "T-shirt", "Jeans",
+        "Sweater", "Jacket", "Socks", "Shoes", "Hat", "Scarf", "Gloves",
+        "Watch", "Ring", "Necklace", "Bracelet", "Earrings", "Sunglasses"
+    ]
+
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=365)
+
+    for i in range(1, num_rows + 1):
+        order_id = i
+        product_name = random.choice(product_names)
+        quantity = random.randint(1, 10)
+        price = round(random.uniform(10, 1000), 2)
+        # Generate a random date within the last year
+        random_date = start_date + timedelta(days=random.randint(0, 364))
+        date_str = random_date.strftime('%Y-%m-%d')
+
+        data.append([order_id, product_name, quantity, price, date_str])
+
+    return data
+
+def create_csv_file(filename="sales_data.csv", num_rows=10000):
+    """Creates a CSV file with sales data."""
+    header = ["order_id", "product_name", "quantity", "price", "date"]
+    sales_data = generate_sales_data(num_rows)
+
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(header)
+        writer.writerows(sales_data)
+
+if __name__ == "__main__":
+    create_csv_file()
+    print("sales_data.csv created successfully with 10000 rows.")
