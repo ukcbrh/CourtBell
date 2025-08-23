@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -14,6 +15,7 @@ import {
   SidebarInset,
   SidebarContent,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCases } from "@/hooks/use-cases";
@@ -21,9 +23,10 @@ import { useCaseAlarms } from "@/hooks/use-case-alarms";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { cases, isLoaded } = useCases();
+  const { setOpenMobile } = useSidebar();
   useCaseAlarms(cases);
 
   const menuItems = [
@@ -37,7 +40,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <SidebarProvider>
+    <>
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:-ml-1">
@@ -52,7 +55,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <SidebarContent>
           <SidebarMenu>
             {menuItems.map((item) => (
-              <SidebarMenuItem key={item.label}>
+              <SidebarMenuItem key={item.label} onClick={() => setOpenMobile(false)}>
                 <Link href={item.href} passHref>
                   <SidebarMenuButton
                     isActive={item.href === '/' ? pathname === item.href : pathname.startsWith(item.href)}
@@ -94,6 +97,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           {!isLoaded ? <Skeleton className="h-[400px] w-full" /> : children}
         </main>
       </SidebarInset>
-    </SidebarProvider>
+    </>
   );
+}
+
+
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <MainLayoutContent>{children}</MainLayoutContent>
+    </SidebarProvider>
+  )
 }
