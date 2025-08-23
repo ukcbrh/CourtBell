@@ -1,3 +1,4 @@
+
 export interface Hearing {
   date: string; // YYYY-MM-DD
   notes: string;
@@ -48,4 +49,17 @@ export interface UserProfile {
   accountType?: string;
   ifscCode?: string;
   upiId?: string;
+}
+
+export interface Transaction {
+  id: string;
+  type: 'in' | 'out';
+  description: string;
+  amount: number;
+  date: string; // ISO 8601 format
+  relatedTo: {
+    type: 'client' | 'junior' | 'other';
+    id: string;
+    name: string;
+  };
 }

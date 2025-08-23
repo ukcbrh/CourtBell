@@ -1,12 +1,15 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Case, Client, Junior } from '@/lib/types';
+import type { Case, Client, Junior, Transaction } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
 const CASES_STORAGE_KEY = 'courtbell-cases';
 const CLIENTS_STORAGE_KEY = 'courtbell-clients';
 const JUNIORS_STORAGE_KEY = 'courtbell-juniors';
+const TRANSACTIONS_STORAGE_KEY = 'courtbell-transactions';
+
 
 // Generic hook for localStorage management
 function useLocalStorage<T>(key: string, initialValue: T[]): [T[], (value: T[]) => void, boolean] {
@@ -113,4 +116,21 @@ export function useJuniors() {
   }, [juniors, setJuniors]);
 
   return { juniors, addJunior, getJuniorById, updateJunior, deleteJunior, isLoaded: isJuniorsLoaded };
+}
+
+
+export function useTransactions() {
+  const [transactions, setTransactions, isLoaded] = useLocalStorage<Transaction>(TRANSACTIONS_STORAGE_KEY, []);
+
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
+    const newTransaction = { ...transaction, id: new Date().toISOString() };
+    setTransactions(prev => [...prev, newTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    return newTransaction;
+  }, [setTransactions]);
+
+  const deleteTransaction = useCallback((id: string) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
+  }, [setTransactions]);
+
+  return { transactions, addTransaction, deleteTransaction, isLoaded };
 }
