@@ -35,7 +35,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     { href: "/clients", label: "Clients", icon: Users },
     { href: "/juniors", label: "Junior Advocates", icon: Briefcase },
     { href: "/payments", label: "Payments", icon: Receipt },
-    { href: "/legal-tools", label: "Legal Tools", icon: Gavel },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
 
