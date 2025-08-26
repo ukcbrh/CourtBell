@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Case, Client, Junior, Transaction } from '@/lib/types';
 import { db } from '@/lib/firebase';
+import { useAuth } from './use-auth';
 import { 
   collection, 
   onSnapshot, 
@@ -13,17 +14,24 @@ import {
   deleteDoc, 
   query,
   orderBy,
+  where,
   Timestamp
 } from 'firebase/firestore';
 
 
 // Generic hook for Firestore collection management
 function useFirestoreCollection<T extends { id: string }>(collectionName: string) {
+  const { user } = useAuth();
   const [data, setData] = useState<T[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, collectionName));
+    if (!user) {
+      setData([]);
+      setIsLoaded(true);
+      return;
+    };
+    const q = query(collection(db, collectionName), where("uid", "==", user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const items: T[] = [];
       querySnapshot.forEach((doc) => {
@@ -44,22 +52,28 @@ function useFirestoreCollection<T extends { id: string }>(collectionName: string
     });
 
     return () => unsubscribe();
-  }, [collectionName]);
+  }, [collectionName, user]);
   
   const addItem = useCallback(async (item: Omit<T, 'id'>) => {
-    const docRef = await addDoc(collection(db, collectionName), item);
-    return { ...item, id: docRef.id } as T;
-  }, [collectionName]);
+    if (!user) throw new Error("User not authenticated");
+    const itemWithOwner = { ...item, uid: user.uid };
+    const docRef = await addDoc(collection(db, collectionName), itemWithOwner);
+    return { ...itemWithOwner, id: docRef.id } as T;
+  }, [collectionName, user]);
   
   const updateItem = useCallback(async (id: string, updatedItem: Partial<Omit<T, 'id'>>) => {
+     if (!user) throw new Error("User not authenticated");
      const docRef = doc(db, collectionName, id);
+     // TODO: Check ownership before updating
      await updateDoc(docRef, updatedItem);
-  }, [collectionName]);
+  }, [collectionName, user]);
 
   const deleteItem = useCallback(async (id: string) => {
+     if (!user) throw new Error("User not authenticated");
      const docRef = doc(db, collectionName, id);
+     // TODO: Check ownership before deleting
      await deleteDoc(docRef);
-  }, [collectionName]);
+  }, [collectionName, user]);
 
   const getItemById = useCallback((id: string | null) => {
     if (!id) return undefined;
@@ -130,11 +144,17 @@ export function useJuniors() {
 
 
 export function useTransactions() {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, "transactions"), orderBy("date", "desc"));
+    if (!user) {
+      setTransactions([]);
+      setIsLoaded(true);
+      return;
+    }
+    const q = query(collection(db, "transactions"), where("uid", "==", user.uid), orderBy("date", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const items: Transaction[] = [];
       querySnapshot.forEach((doc) => {
@@ -149,18 +169,21 @@ export function useTransactions() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
-    const newTransaction = { ...transaction, date: new Date().toISOString() };
+    if (!user) throw new Error("User not authenticated");
+    const newTransaction = { ...transaction, date: new Date().toISOString(), uid: user.uid };
     const docRef = await addDoc(collection(db, "transactions"), newTransaction);
     return { ...newTransaction, id: docRef.id } as Transaction;
-  }, []);
+  }, [user]);
 
   const deleteTransaction = useCallback(async (id: string) => {
+    if (!user) throw new Error("User not authenticated");
     const docRef = doc(db, "transactions", id);
+    // TODO: Check ownership
     await deleteDoc(docRef);
-  }, []);
+  }, [user]);
 
   return { transactions, addTransaction, deleteTransaction, isLoaded };
 }

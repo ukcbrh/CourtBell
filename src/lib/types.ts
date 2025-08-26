@@ -11,6 +11,7 @@ export interface Expense {
 
 export interface Client {
   id: string;
+  uid: string; // User ID of the owner
   name: string;
   address?: string;
   phone?: string;
@@ -18,6 +19,7 @@ export interface Client {
 
 export interface Junior {
   id: string;
+  uid: string; // User ID of the owner
   name: string;
   qualification?: string;
   address?: string;
@@ -27,6 +29,7 @@ export interface Junior {
 
 export interface Case {
   id: string;
+  uid: string; // User ID of the owner
   title: string;
   clientId: string; 
   juniorId?: string;
@@ -53,6 +56,7 @@ export interface UserProfile {
 
 export interface Transaction {
   id: string;
+  uid: string; // User ID of the owner
   type: 'in' | 'out';
   description: string;
   amount: number;

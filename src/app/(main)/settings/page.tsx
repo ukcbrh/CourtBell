@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,8 +14,8 @@ import { UserProfile } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-
-const PROFILE_STORAGE_KEY = 'courtbell-user-profile';
+import { useUserProfile } from '@/hooks/use-user-profile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const profileSchema = z.object({
   name: z.string().optional(),
@@ -30,23 +31,22 @@ const profileSchema = z.object({
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const [profile, setProfile] = useState<UserProfile>({});
-
-  useEffect(() => {
-    const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (storedProfile) {
-      setProfile(JSON.parse(storedProfile));
-    }
-  }, []);
+  const { profile, saveProfile, loading } = useUserProfile();
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    values: profile,
+    defaultValues: profile,
   });
+  
+  useEffect(() => {
+    if (!loading) {
+        form.reset(profile);
+    }
+  }, [profile, loading, form]);
 
-  const onSubmit = (values: z.infer<typeof profileSchema>) => {
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(values));
-    setProfile(values);
+
+  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+    await saveProfile(values);
     toast({
       title: 'Profile Updated',
       description: 'Your profile information has been saved.',
@@ -64,6 +64,10 @@ export default function SettingsPage() {
       reader.readAsDataURL(file);
     }
   };
+  
+  if (loading) {
+    return <Skeleton className="h-96 w-full" />
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
