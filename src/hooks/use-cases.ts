@@ -3,77 +3,83 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Case, Client, Junior, Transaction } from '@/lib/types';
-import { db } from '@/lib/firebase';
 import { useAuth } from './use-auth';
-import { 
-  collection, 
-  onSnapshot, 
-  addDoc, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query,
-  orderBy,
-  where,
-  Timestamp
-} from 'firebase/firestore';
 
-
-// Generic hook for Firestore collection management
-function useFirestoreCollection<T extends { id: string }>(collectionName: string) {
+// Generic hook for Local Storage collection management
+function useLocalStorageCollection<T extends { id: string }>(collectionName: string) {
   const { user } = useAuth();
   const [data, setData] = useState<T[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      setData([]);
-      setIsLoaded(true);
-      return;
-    };
-    const q = query(collection(db, collectionName), where("uid", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const items: T[] = [];
-      querySnapshot.forEach((doc) => {
-        const docData = doc.data();
-        // Convert Firestore Timestamps to strings
-        Object.keys(docData).forEach(key => {
-          if (docData[key] instanceof Timestamp) {
-            docData[key] = docData[key].toDate().toISOString();
-          }
-        });
-        items.push({ id: doc.id, ...docData } as T);
-      });
-      setData(items);
-      setIsLoaded(true);
-    }, (error) => {
-      console.error(`Error fetching ${collectionName}:`, error);
-      setIsLoaded(true);
-    });
+  const getStorageKey = useCallback(() => {
+    if (!user) return null;
+    return `${collectionName}_${user.uid}`;
+  }, [user, collectionName]);
 
-    return () => unsubscribe();
-  }, [collectionName, user]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user) {
+        setIsLoaded(true);
+        return;
+    }
+    
+    const storageKey = getStorageKey();
+    if (!storageKey) {
+        setIsLoaded(true);
+        return;
+    };
+
+    try {
+        const item = window.localStorage.getItem(storageKey);
+        if (item) {
+            setData(JSON.parse(item));
+        }
+    } catch (error) {
+        console.error(`Error reading ${collectionName} from localStorage:`, error);
+        setData([]);
+    }
+    setIsLoaded(true);
+
+  }, [user, getStorageKey, collectionName]);
+
+  const persistData = (newData: T[]) => {
+     if (typeof window === 'undefined' || !user) return;
+     const storageKey = getStorageKey();
+     if (!storageKey) return;
+     try {
+        window.localStorage.setItem(storageKey, JSON.stringify(newData));
+     } catch (error) {
+        console.error(`Error writing ${collectionName} to localStorage:`, error);
+     }
+  };
   
   const addItem = useCallback(async (item: Omit<T, 'id'>) => {
     if (!user) throw new Error("User not authenticated");
-    const itemWithOwner = { ...item, uid: user.uid };
-    const docRef = await addDoc(collection(db, collectionName), itemWithOwner);
-    return { ...itemWithOwner, id: docRef.id } as T;
-  }, [collectionName, user]);
+    const newItem = { ...item, id: new Date().toISOString() } as T;
+    setData(prevData => {
+        const updatedData = [...prevData, newItem];
+        persistData(updatedData);
+        return updatedData;
+    });
+    return newItem;
+  }, [user, getStorageKey]);
   
   const updateItem = useCallback(async (id: string, updatedItem: Partial<Omit<T, 'id'>>) => {
      if (!user) throw new Error("User not authenticated");
-     const docRef = doc(db, collectionName, id);
-     // TODO: Check ownership before updating
-     await updateDoc(docRef, updatedItem);
-  }, [collectionName, user]);
+     setData(prevData => {
+         const newData = prevData.map(item => item.id === id ? { ...item, ...updatedItem } : item);
+         persistData(newData);
+         return newData;
+     });
+  }, [user, getStorageKey]);
 
   const deleteItem = useCallback(async (id: string) => {
      if (!user) throw new Error("User not authenticated");
-     const docRef = doc(db, collectionName, id);
-     // TODO: Check ownership before deleting
-     await deleteDoc(docRef);
-  }, [collectionName, user]);
+     setData(prevData => {
+        const newData = prevData.filter(item => item.id !== id);
+        persistData(newData);
+        return newData;
+     });
+  }, [user, getStorageKey]);
 
   const getItemById = useCallback((id: string | null) => {
     if (!id) return undefined;
@@ -85,7 +91,7 @@ function useFirestoreCollection<T extends { id: string }>(collectionName: string
 
 
 export function useCases() {
-  const { data: cases, isLoaded, addItem, updateItem, deleteItem, getItemById } = useFirestoreCollection<Case>('cases');
+  const { data: cases, isLoaded, addItem, updateItem, deleteItem, getItemById } = useLocalStorageCollection<Case>('cases');
   
   const addCase = useCallback(async (newCase: Omit<Case, 'id'>) => {
     return await addItem(newCase);
@@ -105,7 +111,7 @@ export function useCases() {
 
 
 export function useClients() {
-  const { data: clients, isLoaded, addItem, updateItem, deleteItem, getItemById } = useFirestoreCollection<Client>('clients');
+  const { data: clients, isLoaded, addItem, updateItem, deleteItem, getItemById } = useLocalStorageCollection<Client>('clients');
  
   const addClient = useCallback(async (client: Omit<Client, 'id'>) => {
     return await addItem(client);
@@ -124,7 +130,7 @@ export function useClients() {
 }
 
 export function useJuniors() {
-   const { data: juniors, isLoaded, addItem, updateItem, deleteItem, getItemById } = useFirestoreCollection<Junior>('juniors');
+   const { data: juniors, isLoaded, addItem, updateItem, deleteItem, getItemById } = useLocalStorageCollection<Junior>('juniors');
 
   const addJunior = useCallback(async (junior: Omit<Junior, 'id'>) => {
     return await addItem(junior);
@@ -144,46 +150,19 @@ export function useJuniors() {
 
 
 export function useTransactions() {
-  const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const { data: transactions, isLoaded, addItem, deleteItem } = useLocalStorageCollection<Transaction>('transactions');
 
-  useEffect(() => {
-    if (!user) {
-      setTransactions([]);
-      setIsLoaded(true);
-      return;
-    }
-    const q = query(collection(db, "transactions"), where("uid", "==", user.uid), orderBy("date", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const items: Transaction[] = [];
-      querySnapshot.forEach((doc) => {
-        const docData = doc.data();
-        items.push({ id: doc.id, ...docData } as Transaction);
-      });
-      setTransactions(items);
-      setIsLoaded(true);
-    }, (error) => {
-      console.error(`Error fetching transactions:`, error);
-      setIsLoaded(true);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
-    if (!user) throw new Error("User not authenticated");
-    const newTransaction = { ...transaction, date: new Date().toISOString(), uid: user.uid };
-    const docRef = await addDoc(collection(db, "transactions"), newTransaction);
-    return { ...newTransaction, id: docRef.id } as Transaction;
-  }, [user]);
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'date' | 'uid'>) => {
+    const newTransaction = { ...transaction, date: new Date().toISOString() };
+    // Sorting logic is handled by adding new items to the end and component will re-render
+    return await addItem(newTransaction as Omit<Transaction, 'id'>);
+  }, [addItem]);
 
   const deleteTransaction = useCallback(async (id: string) => {
-    if (!user) throw new Error("User not authenticated");
-    const docRef = doc(db, "transactions", id);
-    // TODO: Check ownership
-    await deleteDoc(docRef);
-  }, [user]);
+    await deleteItem(id);
+  }, [deleteItem]);
+  
+  const sortedTransactions = [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  return { transactions, addTransaction, deleteTransaction, isLoaded };
+  return { transactions: sortedTransactions, addTransaction, deleteTransaction, isLoaded };
 }
