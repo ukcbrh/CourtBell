@@ -257,5 +257,3 @@ const TransactionList = ({ transactions, deleteTransaction }: { transactions: Tr
         </div>
     )
 }
-
-    

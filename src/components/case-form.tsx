@@ -438,7 +438,7 @@ export function CaseForm({ initialData }: CaseFormProps) {
                                 <div key={index} className="flex items-start justify-between p-3 rounded-lg border bg-muted/50">
                                 <div>
                                         <p className="font-bold">{e.description}</p>
-                                        <p className="text-muted-foreground mt-1">₹{e.amount}</p>
+                                        <p className="text-muted-foreground mt-1">₹{e.amount.toLocaleString()}</p>
                                 </div>
                                 <Button type="button" variant="ghost" size="icon" onClick={() => deleteExpense(index)}>
                                         <Trash2 className="h-4 w-4 text-destructive"/>

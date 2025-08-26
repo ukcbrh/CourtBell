@@ -96,7 +96,7 @@ ${historyText}
 ---
 *Expenses:*
 ${expensesText}
-*Total Expenses: ₹${totalExpenses}*
+*Total Expenses: ₹${totalExpenses.toLocaleString()}*
     `.trim();
   }
 
