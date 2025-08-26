@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -9,8 +8,6 @@ import {
   ReactNode,
   useCallback,
 } from 'react';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from './use-auth';
 import type { UserProfile } from '@/lib/types';
 
@@ -29,42 +26,56 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>({});
   const [loading, setLoading] = useState(true);
 
+  const getStorageKey = useCallback(() => {
+    if (!user) return null;
+    return `profile_${user.uid}`;
+  }, [user]);
+
   useEffect(() => {
-    if (user) {
-      const docRef = doc(db, 'profiles', user.uid);
-      const unsubscribe = onSnapshot(
-        docRef,
-        (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
-          } else {
-            // Initialize with a default profile if it doesn't exist
+    setLoading(true);
+    if (typeof window === 'undefined' || !user) {
+      setProfile({});
+      setLoading(false);
+      return;
+    }
+    
+    const storageKey = getStorageKey();
+    if (!storageKey) {
+        setLoading(false);
+        return;
+    }
+
+    try {
+        const item = window.localStorage.getItem(storageKey);
+        if (item) {
+            setProfile(JSON.parse(item));
+        } else {
+             // Initialize with a default profile if it doesn't exist
             const defaultProfile = { name: user.displayName || '', email: user.email || '' };
             setProfile(defaultProfile);
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error('Error fetching profile:', error);
-          setLoading(false);
         }
-      );
-      return () => unsubscribe();
-    } else {
-      setProfile({}); // Clear profile on logout
-      setLoading(false);
+    } catch (error) {
+        console.error('Error reading profile from localStorage:', error);
+        setProfile({});
     }
-  }, [user]);
+    setLoading(false);
+  }, [user, getStorageKey]);
 
   const saveProfile = useCallback(
     async (newProfile: UserProfile) => {
-      if (user) {
-        const docRef = doc(db, 'profiles', user.uid);
-        await setDoc(docRef, newProfile, { merge: true });
-        setProfile(newProfile);
+      if (user && typeof window !== 'undefined') {
+        const storageKey = getStorageKey();
+        if (!storageKey) return;
+        try {
+            const updatedProfile = { ...profile, ...newProfile };
+            window.localStorage.setItem(storageKey, JSON.stringify(updatedProfile));
+            setProfile(updatedProfile);
+        } catch (error) {
+            console.error('Error saving profile to localStorage:', error);
+        }
       }
     },
-    [user]
+    [user, getStorageKey, profile]
   );
 
   const value = { profile, saveProfile, loading };
