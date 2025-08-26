@@ -3,134 +3,164 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Case, Client, Junior, Transaction } from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  doc, 
+  updateDoc, 
+  deleteDoc, 
+  query,
+  orderBy,
+  Timestamp
+} from 'firebase/firestore';
 
-const CASES_STORAGE_KEY = 'courtbell-cases';
-const CLIENTS_STORAGE_KEY = 'courtbell-clients';
-const JUNIORS_STORAGE_KEY = 'courtbell-juniors';
-const TRANSACTIONS_STORAGE_KEY = 'courtbell-transactions';
 
-
-// Generic hook for localStorage management
-function useLocalStorage<T>(key: string, initialValue: T[]): [T[], (value: T[]) => void, boolean] {
-  const [storedValue, setStoredValue] = useState<T[]>(initialValue);
+// Generic hook for Firestore collection management
+function useFirestoreCollection<T extends { id: string }>(collectionName: string) {
+  const [data, setData] = useState<T[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      if (item) {
-        setStoredValue(JSON.parse(item));
-      }
-    } catch (error) {
-      console.error(`Error reading localStorage key “${key}”:`, error);
-    } finally {
+    const q = query(collection(db, collectionName));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const items: T[] = [];
+      querySnapshot.forEach((doc) => {
+        const docData = doc.data();
+        // Convert Firestore Timestamps to strings
+        Object.keys(docData).forEach(key => {
+          if (docData[key] instanceof Timestamp) {
+            docData[key] = docData[key].toDate().toISOString();
+          }
+        });
+        items.push({ id: doc.id, ...docData } as T);
+      });
+      setData(items);
       setIsLoaded(true);
-    }
-  }, [key]);
+    }, (error) => {
+      console.error(`Error fetching ${collectionName}:`, error);
+      setIsLoaded(true);
+    });
 
-  const setValue = (value: T[]) => {
-    try {
-      setStoredValue(value);
-      window.localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error(`Error setting localStorage key “${key}”:`, error);
-    }
-  };
+    return () => unsubscribe();
+  }, [collectionName]);
+  
+  const addItem = useCallback(async (item: Omit<T, 'id'>) => {
+    const docRef = await addDoc(collection(db, collectionName), item);
+    return { ...item, id: docRef.id } as T;
+  }, [collectionName]);
+  
+  const updateItem = useCallback(async (id: string, updatedItem: Partial<Omit<T, 'id'>>) => {
+     const docRef = doc(db, collectionName, id);
+     await updateDoc(docRef, updatedItem);
+  }, [collectionName]);
 
-  return [storedValue, setValue, isLoaded];
+  const deleteItem = useCallback(async (id: string) => {
+     const docRef = doc(db, collectionName, id);
+     await deleteDoc(docRef);
+  }, [collectionName]);
+
+  const getItemById = useCallback((id: string | null) => {
+    if (!id) return undefined;
+    return data.find(item => item.id === id);
+  }, [data]);
+
+  return { data, isLoaded, addItem, updateItem, deleteItem, getItemById };
 }
 
 
 export function useCases() {
-  const [cases, setCases, isCasesLoaded] = useLocalStorage<Case>(CASES_STORAGE_KEY, []);
+  const { data: cases, isLoaded, addItem, updateItem, deleteItem, getItemById } = useFirestoreCollection<Case>('cases');
   
-  const addCase = useCallback((newCase: Omit<Case, 'id'>) => {
-    const fullCase = { ...newCase, id: new Date().toISOString() };
-    setCases([...cases, fullCase]);
-    return fullCase;
-  }, [cases, setCases]);
+  const addCase = useCallback(async (newCase: Omit<Case, 'id'>) => {
+    return await addItem(newCase);
+  }, [addItem]);
 
-  const getCaseById = useCallback((id: string | null) => {
-    if (!id) return undefined;
-    return cases.find(c => c.id === id);
-  }, [cases]);
+  const updateCase = useCallback(async (updatedCase: Case) => {
+    const { id, ...data } = updatedCase;
+    await updateItem(id, data);
+  }, [updateItem]);
 
-  const updateCase = useCallback((updatedCase: Case) => {
-    setCases(cases.map(c => c.id === updatedCase.id ? updatedCase : c));
-  }, [cases, setCases]);
+  const deleteCase = useCallback(async (id: string) => {
+    await deleteItem(id);
+  }, [deleteItem]);
 
-  const deleteCase = useCallback((id: string) => {
-    setCases(cases.filter(c => c.id !== id));
-  }, [cases, setCases]);
-
-  return { cases, addCase, getCaseById, updateCase, deleteCase, isLoaded: isCasesLoaded };
+  return { cases, addCase, getCaseById: getItemById, updateCase, deleteCase, isLoaded };
 }
 
 
 export function useClients() {
-  const [clients, setClients, isClientsLoaded] = useLocalStorage<Client>(CLIENTS_STORAGE_KEY, []);
+  const { data: clients, isLoaded, addItem, updateItem, deleteItem, getItemById } = useFirestoreCollection<Client>('clients');
+ 
+  const addClient = useCallback(async (client: Omit<Client, 'id'>) => {
+    return await addItem(client);
+  }, [addItem]);
 
-  const addClient = useCallback((client: Omit<Client, 'id'>) => {
-    const newClient = { ...client, id: new Date().toISOString() };
-    setClients([...clients, newClient]);
-    return newClient;
-  }, [clients, setClients]);
-
-  const getClientById = useCallback((id: string | null) => {
-    if (!id) return undefined;
-    return clients.find(c => c.id === id);
-  }, [clients]);
-
-  const updateClient = useCallback((updatedClient: Client) => {
-    setClients(clients.map(c => c.id === updatedClient.id ? updatedClient : c));
-  }, [clients, setClients]);
+  const updateClient = useCallback(async (updatedClient: Client) => {
+     const { id, ...data } = updatedClient;
+     await updateItem(id, data);
+  }, [updateItem]);
   
-  const deleteClient = useCallback((id: string) => {
-    setClients(clients.filter(c => c.id !== id));
-  }, [clients, setClients]);
+  const deleteClient = useCallback(async (id: string) => {
+    await deleteItem(id);
+  }, [deleteItem]);
 
-  return { clients, addClient, getClientById, updateClient, deleteClient, isLoaded: isClientsLoaded };
+  return { clients, addClient, getClientById: getItemById, updateClient, deleteClient, isLoaded };
 }
 
 export function useJuniors() {
-  const [juniors, setJuniors, isJuniorsLoaded] = useLocalStorage<Junior>(JUNIORS_STORAGE_KEY, []);
+   const { data: juniors, isLoaded, addItem, updateItem, deleteItem, getItemById } = useFirestoreCollection<Junior>('juniors');
 
-  const addJunior = useCallback((junior: Omit<Junior, 'id'>) => {
-    const newJunior = { ...junior, id: new Date().toISOString() };
-    setJuniors([...juniors, newJunior]);
-    return newJunior;
-  }, [juniors, setJuniors]);
+  const addJunior = useCallback(async (junior: Omit<Junior, 'id'>) => {
+    return await addItem(junior);
+  }, [addItem]);
 
-  const getJuniorById = useCallback((id: string | null) => {
-    if (!id) return undefined;
-    return juniors.find(j => j.id === id);
-  }, [juniors]);
+  const updateJunior = useCallback(async (updatedJunior: Junior) => {
+     const { id, ...data } = updatedJunior;
+     await updateItem(id, data);
+  }, [updateItem]);
 
-  const updateJunior = useCallback((updatedJunior: Junior) => {
-     setJuniors(juniors.map(j => j.id === updatedJunior.id ? updatedJunior : j));
-  }, [juniors, setJuniors]);
+  const deleteJunior = useCallback(async (id: string) => {
+    await deleteItem(id);
+  }, [deleteItem]);
 
-  const deleteJunior = useCallback((id: string) => {
-    setJuniors(juniors.filter(j => j.id !== id));
-  }, [juniors, setJuniors]);
-
-  return { juniors, addJunior, getJuniorById, updateJunior, deleteJunior, isLoaded: isJuniorsLoaded };
+  return { juniors, addJunior, getJuniorById: getItemById, updateJunior, deleteJunior, isLoaded };
 }
 
 
 export function useTransactions() {
-  const [transactions, setTransactions, isLoaded] = useLocalStorage<Transaction>(TRANSACTIONS_STORAGE_KEY, []);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
-    const newTransaction = { ...transaction, id: new Date().toISOString() };
-    setTransactions(prev => [...prev, newTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    return newTransaction;
-  }, [setTransactions]);
+  useEffect(() => {
+    const q = query(collection(db, "transactions"), orderBy("date", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const items: Transaction[] = [];
+      querySnapshot.forEach((doc) => {
+        const docData = doc.data();
+        items.push({ id: doc.id, ...docData } as Transaction);
+      });
+      setTransactions(items);
+      setIsLoaded(true);
+    }, (error) => {
+      console.error(`Error fetching transactions:`, error);
+      setIsLoaded(true);
+    });
 
-  const deleteTransaction = useCallback((id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  }, [setTransactions]);
+    return () => unsubscribe();
+  }, []);
+
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
+    const newTransaction = { ...transaction, date: new Date().toISOString() };
+    const docRef = await addDoc(collection(db, "transactions"), newTransaction);
+    return { ...newTransaction, id: docRef.id } as Transaction;
+  }, []);
+
+  const deleteTransaction = useCallback(async (id: string) => {
+    const docRef = doc(db, "transactions", id);
+    await deleteDoc(docRef);
+  }, []);
 
   return { transactions, addTransaction, deleteTransaction, isLoaded };
 }
