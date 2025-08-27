@@ -35,12 +35,34 @@ export default function SettingsPage() {
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: profile,
+    defaultValues: {
+      name: '',
+      photoDataUrl: '',
+      mobileNumber: '',
+      address: '',
+      bankName: '',
+      bankAccount: '',
+      accountType: '',
+      ifscCode: '',
+      upiId: '',
+      ...profile,
+    },
   });
   
   useEffect(() => {
     if (!loading) {
-        form.reset(profile);
+        form.reset({
+            name: '',
+            photoDataUrl: '',
+            mobileNumber: '',
+            address: '',
+            bankName: '',
+            bankAccount: '',
+            accountType: '',
+            ifscCode: '',
+            upiId: '',
+            ...profile,
+        });
     }
   }, [profile, loading, form]);
 
