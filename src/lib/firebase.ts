@@ -9,13 +9,13 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  "projectId": "courtbell",
-  "appId": "1:534647613176:web:94a5adf181e4d2182c3d0d",
-  "storageBucket": "courtbell.firebasestorage.app",
-  "apiKey": "AIzaSyA_2tzAd3PhEJH3lBZwXQ0ku-rxWbSPel4",
-  "authDomain": "courtbell.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "534647613176"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
