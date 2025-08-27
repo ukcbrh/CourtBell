@@ -82,6 +82,21 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
         </SidebarHeader>
+        <SidebarHeader className="border-b border-sidebar-border">
+            <div className="flex items-center gap-3 p-2">
+                <Avatar className="h-9 w-9">
+                    <AvatarImage src={profile.photoDataUrl} />
+                    <AvatarFallback>{profile.name?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
+                    <span className="font-semibold text-sm truncate">{profile.name || user.email}</span>
+                     <span className="text-xs text-sidebar-foreground/70 truncate">{user.email}</span>
+                </div>
+                 <Button variant="ghost" size="icon" className="group-data-[collapsible=icon]:hidden ml-auto hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4"/>
+                 </Button>
+            </div>
+        </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
             {menuItems.map((item) => (
@@ -99,21 +114,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarMenu>
         </SidebarContent>
-         <SidebarHeader className="mt-auto border-t border-sidebar-border">
-            <div className="flex items-center gap-3 p-2">
-                <Avatar className="h-9 w-9">
-                    <AvatarImage src={profile.photoDataUrl} />
-                    <AvatarFallback>{profile.name?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
-                    <span className="font-semibold text-sm truncate">{profile.name || user.email}</span>
-                     <span className="text-xs text-sidebar-foreground/70 truncate">{user.email}</span>
-                </div>
-                 <Button variant="ghost" size="icon" className="group-data-[collapsible=icon]:hidden ml-auto hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4"/>
-                 </Button>
-            </div>
-        </SidebarHeader>
       </Sidebar>
       <SidebarInset>
         <header className="flex items-center justify-between border-b p-4 md:p-6 md:py-4">
